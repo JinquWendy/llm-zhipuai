@@ -6,7 +6,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 import sys
 sys.path.append("../C3 搭建知识库") # 将父目录放入系统路径中
-from zhipuai_embedding import ZhipuAIEmbeddings
+# from zhipuai_embedding import ZhipuAIEmbeddings
 from langchain.vectorstores.chroma import Chroma
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
@@ -14,7 +14,140 @@ from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv())    # read local .env file
 
 ## copy自llm接入langchain
-from zhipuai_llm import ZhipuAILLM
+# from zhipuai_llm import ZhipuAILLM
+
+from __future__ import annotations
+
+import logging
+from typing import Dict, List, Any
+
+
+from langchain.embeddings.base import Embeddings
+from langchain.pydantic_v1 import BaseModel, root_validator
+
+logger = logging.getLogger(__name__)
+
+class ZhipuAIEmbeddings(BaseModel, Embeddings):
+    """`Zhipuai Embeddings` embedding models."""
+
+    client: Any
+    """`zhipuai.ZhipuAI"""
+
+    @root_validator()
+    def validate_environment(cls, values: Dict) -> Dict:
+        """
+        实例化ZhipuAI为values["client"]
+
+        Args:
+
+            values (Dict): 包含配置信息的字典，必须包含 client 的字段.
+        Returns:
+
+            values (Dict): 包含配置信息的字典。如果环境中有zhipuai库，则将返回实例化的ZhipuAI类；否则将报错 'ModuleNotFoundError: No module named 'zhipuai''.
+        """
+        from zhipuai import ZhipuAI
+        values["client"] = ZhipuAI()
+        return values
+    
+    def embed_query(self, text: str) -> List[float]:
+        """
+        生成输入文本的 embedding.
+
+        Args:
+            texts (str): 要生成 embedding 的文本.
+
+        Return:
+            embeddings (List[float]): 输入文本的 embedding，一个浮点数值列表.
+        """
+        embeddings = self.client.embeddings.create(
+            model="embedding-2",
+            input=text
+        )
+        return embeddings.data[0].embedding
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        生成输入文本列表的 embedding.
+        Args:
+            texts (List[str]): 要生成 embedding 的文本列表.
+
+        Returns:
+            List[List[float]]: 输入列表中每个文档的 embedding 列表。每个 embedding 都表示为一个浮点值列表。
+        """
+        return [self.embed_query(text) for text in texts]
+    
+    
+    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Asynchronous Embed search docs."""
+        raise NotImplementedError("Please use `embed_documents`. Official does not support asynchronous requests")
+
+    async def aembed_query(self, text: str) -> List[float]:
+        """Asynchronous Embed query text."""
+        raise NotImplementedError("Please use `aembed_query`. Official does not support asynchronous requests")
+
+from typing import Any, List, Mapping, Optional, Dict
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models.llms import LLM
+from zhipuai import ZhipuAI
+
+# 继承自 langchain.llms.base.LLM
+class ZhipuAILLM(LLM):
+    # 默认选用 ERNIE-Bot-turbo 模型，即目前一般所说的百度文心大模型
+    model: str = "glm-4"
+    # 温度系数
+    temperature: float = 0.1
+    # API_Key
+    api_key: str = None
+    
+    def _call(self, prompt : str, stop: Optional[List[str]] = None,
+                run_manager: Optional[CallbackManagerForLLMRun] = None,
+                **kwargs: Any):
+        
+        def gen_glm_params(prompt):
+            '''
+            构造 GLM 模型请求参数 messages
+
+            请求参数：
+                prompt: 对应的用户提示词
+            '''
+            messages = [{"role": "user", "content": prompt}]
+            return messages
+        
+        client = ZhipuAI(
+            api_key=self.api_key
+        )
+     
+        messages = gen_glm_params(prompt)
+        response = client.chat.completions.create(
+            model = self.model,
+            messages = messages,
+            temperature = self.temperature
+        )
+
+        if len(response.choices) > 0:
+            return response.choices[0].message.content
+        return "generate answer error"
+
+
+    # 首先定义一个返回默认参数的方法
+    @property
+    def _default_params(self) -> Dict[str, Any]:
+        """获取调用Ennie API的默认参数。"""
+        normal_params = {
+            "temperature": self.temperature,
+            }
+        # print(type(self.model_kwargs))
+        return {**normal_params}
+
+    @property
+    def _llm_type(self) -> str:
+        return "Wenxin"
+
+    @property
+    def _identifying_params(self) -> Mapping[str, Any]:
+        """Get the identifying parameters."""
+        return {**{"model": self.model}, **self._default_params}
+
 
 # 获取环境变量 API_KEY
 api_key = os.environ["ZHIPUAI_API_KEY"] #填写控制台中获取的 APIKey 信息
