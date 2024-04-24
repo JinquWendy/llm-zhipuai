@@ -5,7 +5,7 @@ import os
 from langchain_core.output_parsers import StrOutputParser
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
- from pydantic import root_validator
+from pydantic import root_validator
 import sys
 sys.path.append("../C3 搭建知识库") # 将父目录放入系统路径中
 # from zhipuai_embedding import ZhipuAIEmbeddings
