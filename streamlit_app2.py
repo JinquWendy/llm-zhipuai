@@ -1,3 +1,4 @@
+from __future__ import annotations
 import streamlit as st
 from langchain_openai import ChatOpenAI
 import os
@@ -16,7 +17,7 @@ _ = load_dotenv(find_dotenv())    # read local .env file
 ## copy自llm接入langchain
 # from zhipuai_llm import ZhipuAILLM
 
-from __future__ import annotations
+
 
 import logging
 from typing import Dict, List, Any
