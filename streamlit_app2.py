@@ -151,13 +151,13 @@ class ZhipuAILLM(LLM):
 
 
 # 获取环境变量 API_KEY
-api_key = os.environ["ZHIPUAI_API_KEY"] #填写控制台中获取的 APIKey 信息
+api_key = "f401777a4172e354a5d9812853441cda.V5kYkmUcnfrd2pU3" #填写控制台中获取的 APIKey 信息
 
 zhipuai_model = ZhipuAILLM(model="chatglm_std", temperature=0, api_key=api_key)
 
 #export OPENAI_API_KEY=
 #os.environ["OPENAI_API_BASE"] = 'https://api.chatgptid.net/v1'
-# zhipuai_api_key = os.environ['ZHIPUAI_API_KEY']
+# zhipuai_api_key = "f401777a4172e354a5d9812853441cda.V5kYkmUcnfrd2pU3"
 
 
 def generate_response(input_text, api_key):
